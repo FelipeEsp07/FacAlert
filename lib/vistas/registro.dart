@@ -1,17 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:fac_alert/modelos/usuario.dart';
+import 'package:fac_alert/database/usuario_dao.dart';
 
-class RegistroPage extends StatelessWidget {
+class RegistroPage extends StatefulWidget {
   const RegistroPage({super.key});
 
   @override
+  _RegistroPageState createState() => _RegistroPageState();
+}
+
+class _RegistroPageState extends State<RegistroPage> {
+  final _nombreController = TextEditingController();
+  final _correoController = TextEditingController();
+  final _telefonoController = TextEditingController();
+  final _direccionController = TextEditingController();
+  final _cedulaController = TextEditingController();
+  final _contrasenaController = TextEditingController();
+  final _confirmarContrasenaController = TextEditingController();
+
+  final UsuarioDao _usuarioDao = UsuarioDao();
+
+  // Método para registrar usuario
+  void _registrarUsuario() async {
+    if (_contrasenaController.text != _confirmarContrasenaController.text) {
+      _mostrarMensaje('Las contraseñas no coinciden');
+      return;
+    }
+
+    final usuario = Usuario(
+      nombre: _nombreController.text.trim(),
+      correo: _correoController.text.trim(),
+      telefono: _telefonoController.text.trim(),
+      direccion: _direccionController.text.trim(),
+      cedula: _cedulaController.text.trim(),
+      contrasena: _contrasenaController.text.trim(),
+    );
+
+    final resultado = await _usuarioDao.crearUsuario(usuario);
+    if (resultado > 0) {
+      _mostrarMensaje('Registro exitoso');
+      Navigator.pop(context);
+    } else {
+      _mostrarMensaje('Error al registrar usuario');
+    }
+  }
+
+  void _mostrarMensaje(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Definición de colores personalizados
-    final Color colorFondoStart = const Color(0xFFB2DFDB);
-    final Color colorFondoEnd = const Color(0xFFE0F2F1);
-    final Color colorBoton = const Color(0xFF00796B);
-    final Color colorTextoCampos = const Color(0xFF004D40);
-    final Color colorTitulo = const Color(0xFF00695C);
-    final Color colorSubtitulo = const Color(0xFF00897B);
+    final colorFondoStart = const Color(0xFFB2DFDB);
+    final colorFondoEnd = const Color(0xFFE0F2F1);
+    final colorBoton = const Color(0xFF00796B);
+    final colorTextoCampos = const Color(0xFF004D40);
+    final colorTitulo = const Color(0xFF00695C);
+    final colorSubtitulo = const Color(0xFF00897B);
 
     return Scaffold(
       extendBody: true,
@@ -28,263 +75,138 @@ class RegistroPage extends StatelessWidget {
         ),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Título de la app
-                Text(
-                  'FacAlert',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: colorTitulo,
-                    letterSpacing: 1.2,
-                    fontFamily: 'Cursive', // Agrega la fuente en pubspec.yaml si la usas
-                  ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Column(
+            children: [
+              Text(
+                'FacAlert',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: colorTitulo,
+                  letterSpacing: 1.2,
+                  fontFamily: 'Cursive',
                 ),
-                const SizedBox(height: 30),
+              ),
+              const SizedBox(height: 30),
 
-                // Título de la pantalla de registro
-                Text(
-                  'Registrarse',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w600,
-                    color: colorTitulo,
-                  ),
+              Text(
+                'Registrarse',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w600,
+                  color: colorTitulo,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Crea una nueva cuenta',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: colorSubtitulo,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Crea una nueva cuenta',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: colorSubtitulo,
                 ),
-                const SizedBox(height: 40),
+              ),
+              const SizedBox(height: 40),
 
-                // Campo para el Nombre Completo
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+              // Nombre Completo
+              _campoTexto('Nombre Completo', Icons.person, _nombreController, TextInputType.name),
+
+              // Correo Electrónico
+              _campoTexto('Correo', Icons.email, _correoController, TextInputType.emailAddress),
+
+              // Teléfono
+              _campoTexto('Teléfono', Icons.phone, _telefonoController, TextInputType.phone),
+
+              // Dirección
+              _campoTexto('Dirección', Icons.location_on, _direccionController, TextInputType.streetAddress),
+
+              // Cédula
+              _campoTexto('Cédula', Icons.badge, _cedulaController, TextInputType.number),
+
+              // Contraseña
+              _campoTexto('Contraseña', Icons.lock, _contrasenaController, TextInputType.visiblePassword, esContrasena: true),
+
+              // Confirmar Contraseña
+              _campoTexto('Confirmar Contraseña', Icons.lock_outline, _confirmarContrasenaController, TextInputType.visiblePassword, esContrasena: true),
+
+              const SizedBox(height: 30),
+
+              // Botón "Registrarse"
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _registrarUsuario,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorBoton,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 5,
+                    shadowColor: Colors.black38,
                   ),
-                  child: TextField(
-                    keyboardType: TextInputType.name,
-                    decoration: InputDecoration(
-                      hintText: 'Nombre Completo',
-                      hintStyle: TextStyle(color: colorTextoCampos.withOpacity(0.7)),
-                      prefixIcon: Icon(Icons.person, color: colorTextoCampos),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: const Text(
+                    'Registrarse',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-
-                // Campo para el Correo
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      hintText: 'Correo',
-                      hintStyle: TextStyle(color: colorTextoCampos.withOpacity(0.7)),
-                      prefixIcon: Icon(Icons.email, color: colorTextoCampos),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Campo para la Contraseña
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      hintText: 'Contraseña',
-                      hintStyle: TextStyle(color: colorTextoCampos.withOpacity(0.7)),
-                      prefixIcon: Icon(Icons.lock, color: colorTextoCampos),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Campo para Confirmar la Contraseña
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      hintText: 'Confirmar Contraseña',
-                      hintStyle: TextStyle(color: colorTextoCampos.withOpacity(0.7)),
-                      prefixIcon: Icon(Icons.lock_outline, color: colorTextoCampos),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Botón "Registrarse"
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Lógica para registrarse
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorBoton,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 5,
-                      shadowColor: Colors.black38,
-                    ),
-                    child: const Text(
-                      'Registrarse',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Separador para métodos alternativos
-                Text(
-                  'O regístrate con',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: colorTextoCampos,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Botones para redes sociales
-                Column(
-                  children: [
-                    // Botón de Google
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Lógica para registrarse con Google
-                        },
-                        icon: const Icon(Icons.g_mobiledata, size: 24),
-                        label: const Text('Registrarse con Google'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black87,
-                          side: const BorderSide(color: Colors.grey),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 3,
-                          shadowColor: Colors.black26,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Botón de Facebook
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Lógica para registrarse con Facebook
-                        },
-                        icon: const Icon(Icons.facebook, size: 24, color: Colors.white),
-                        label: const Text('Registrarse con Facebook'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3b5998),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 3,
-                          shadowColor: Colors.black26,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Botón de Twitter
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Lógica para registrarse con Twitter
-                        },
-                        icon: const Icon(Icons.alternate_email, size: 24, color: Colors.white),
-                        label: const Text('Registrarse con Twitter'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1DA1F2),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 3,
-                          shadowColor: Colors.black26,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  // Widget para crear campos de texto reutilizables
+  Widget _campoTexto(
+      String hintText,
+      IconData icon,
+      TextEditingController controller,
+      TextInputType tipo,
+      {bool esContrasena = false}
+      ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: tipo,
+        obscureText: esContrasena,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(color: const Color(0xFF004D40).withOpacity(0.7)),
+          prefixIcon: Icon(icon, color: const Color(0xFF004D40)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _correoController.dispose();
+    _telefonoController.dispose();
+    _direccionController.dispose();
+    _cedulaController.dispose();
+    _contrasenaController.dispose();
+    _confirmarContrasenaController.dispose();
+    super.dispose();
   }
 }

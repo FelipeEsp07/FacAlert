@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'vistas/login.dart';     // Ajusta la ruta según la ubicación de tu archivo
-import 'vistas/registro.dart';  // Ajusta la ruta según la ubicación de tu archivo
-
+import 'vistas/login.dart';
+import 'vistas/registro.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -16,7 +15,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
       ),
-      initialRoute: '/registro', // Pantalla inicial
+      initialRoute: '/registro',
       routes: {
         '/login': (context) => const LoginPage(),
         '/registro': (context) => const RegistroPage(),

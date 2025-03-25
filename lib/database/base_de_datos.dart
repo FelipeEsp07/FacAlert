@@ -1,25 +1,33 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
-/// Función para inicializar y abrir (o crear) la base de datos
-Future<Database> iniciarBaseDeDatos() async {
-  // Obtiene la ruta donde se guardarán las bases de datos en el dispositivo
-  final rutaBD = await getDatabasesPath();
-  final ruta = join(rutaBD, 'mi_base_de_datos.db');
+class BaseDeDatos {
+  static Database? _database;
+  BaseDeDatos._privateConstructor();
+  static final BaseDeDatos instance = BaseDeDatos._privateConstructor();
 
-  // Abre o crea la base de datos y define la estructura inicial
-  return await openDatabase(
-    ruta,
-    version: 1,
-    onCreate: (db, version) async {
-      // Crea la tabla "usuarios"
-      await db.execute('''
-        CREATE TABLE usuarios (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nombre TEXT,
-          email TEXT
-        )
-      ''');
-    },
-  );
+  // Método para obtener la base de datos
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+
+    _database = await _iniciarBaseDeDatos();
+    return _database!;
+  }
+
+  // Método para abrir la base de datos
+  Future<Database> _iniciarBaseDeDatos() async {
+    final rutaBD = await getDatabasesPath();
+    final ruta = join(rutaBD, 'FacAlert.db');
+
+    return await openDatabase(
+      ruta,
+      version: 1,
+      onCreate: (db, version) async {
+        print('La base de datos FacAlert creada.');
+      },
+      onOpen: (db) async {
+        print('Base de datos FacAlert abierta.');
+      },
+    );
+  }
 }
