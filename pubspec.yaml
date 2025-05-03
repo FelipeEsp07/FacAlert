@@ -1,0 +1,56 @@
+name: facalert
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ">=3.7.2 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP clients
+  http: ^1.3.0
+  dio: ^5.4.3+1
+
+  # Almacenamiento local
+  shared_preferences: ^2.0.15
+
+  # Cámara / galería
+  image_picker: ^1.1.2
+
+  # Mapas (incluye Heatmap nativo)
+  google_maps_flutter: ^2.10.1
+
+  # Geolocalización y permisos
+  geolocator: ^14.0.0            
+  permission_handler: ^12.0.0+1 
+
+  # Notificaciones locales
+  flutter_local_notifications: ^19.1.0
+
+  # Multimedia / uploads
+  mime: ^2.0.0
+  http_parser: ^4.0.0
+
+  # Internacionalización
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
