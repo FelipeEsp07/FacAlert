@@ -1,3 +1,5 @@
+// lib/services/cluster_service.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/cluster.dart';
@@ -6,15 +8,17 @@ class ClusterService {
   final String baseUrl;
   final String token;
 
-  ClusterService({ required this.baseUrl, required this.token });
+  ClusterService({
+    required this.baseUrl,
+    required this.token,
+  });
 
   Future<List<Cluster>> fetchClusters({
     double radius = 75.0,
-    int threshold = 3,    
+    int threshold = 3,
   }) async {
     final uri = Uri.parse(
-      '$baseUrl/denuncias/clusters/'
-      '?radius=$radius&threshold=$threshold'
+      '$baseUrl/denuncias/clusters/?radius=$radius&threshold=$threshold'
     );
     final resp = await http.get(
       uri,
@@ -26,7 +30,9 @@ class ClusterService {
     if (resp.statusCode != 200) {
       throw Exception('Error al cargar clusters: ${resp.statusCode}');
     }
-    final List data = jsonDecode(resp.body);
-    return data.map((j) => Cluster.fromJson(j)).toList();
+    final List data = jsonDecode(resp.body) as List<dynamic>;
+    return data
+        .map((j) => Cluster.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 }

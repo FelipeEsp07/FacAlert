@@ -23,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   late Future<void> _initFuture;
   late ClusterService _clusterService;
   List<model.Cluster> _clusters = [];
+  Map<CircleId, model.Cluster> _circleClusterMap = {};
 
   String _nombre = '';
   String _email = '';
@@ -72,9 +73,20 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _loadClusters() async {
     try {
       final list = await _clusterService.fetchClusters(threshold: 3);
-      setState(() => _clusters = list);
+      setState(() {
+        _clusters = list;
+        _buildCircleClusterMap();
+      });
     } catch (e) {
-      debugPrint('Error al cargar clusters: \$e');
+      debugPrint('Error al cargar clusters: $e');
+    }
+  }
+
+  void _buildCircleClusterMap() {
+    _circleClusterMap.clear();
+    for (var c in _clusters.where((c) => c.cantidad >= 3)) {
+      final id = CircleId('${c.lat}-${c.lng}');
+      _circleClusterMap[id] = c;
     }
   }
 
@@ -171,24 +183,80 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Set<Circle> _buildCircles() {
-    return _clusters
-        .where((c) => c.cantidad >= 3)
-        .map((c) {
-          final bool isDanger = c.cantidad >= 5;
-          final Color fill = isDanger
-              ? Colors.red.withOpacity(0.3)
-              : const Color.fromARGB(255, 247, 210, 4).withOpacity(0.3);
-          final Color stroke = isDanger ? Colors.red : Colors.yellow;
-          return Circle(
-            circleId: CircleId('\${c.lat}-\${c.lng}'),
-            center: LatLng(c.lat, c.lng),
-            radius: 100.0,
-            fillColor: fill,
-            strokeColor: stroke,
-            strokeWidth: 1,
-          );
-        })
-        .toSet();
+    return _circleClusterMap.entries.map((entry) {
+      final id = entry.key;
+      final c = entry.value;
+      final bool isDanger = c.cantidad >= 5;
+      final Color fill = isDanger
+          ? Colors.red.withOpacity(0.3)
+          : const Color.fromARGB(255, 247, 210, 4).withOpacity(0.3);
+      final Color stroke = isDanger ? Colors.red : Colors.yellow;
+      return Circle(
+        circleId: id,
+        center: LatLng(c.lat, c.lng),
+        radius: 100.0,
+        fillColor: fill,
+        strokeColor: stroke,
+        strokeWidth: 1,
+        consumeTapEvents: true,
+        onTap: () => _showClusterInfo(c),
+      );
+    }).toSet();
+  }
+
+  void _showClusterInfo(model.Cluster c) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Zona de Peligro',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text('Denuncias totales: ${c.cantidad}', style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('Tipos de delito:', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            ...c.delitos.entries.map((e) => Text('· ${e.key}: ${e.value}')),
+            const SizedBox(height: 12),
+            Text('Franjas horarias críticas:', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            if (c.dangerSlots.isEmpty)
+              const Text('No se detectan franjas críticas.')
+            else
+              ...c.dangerSlots.map((slot) {
+                final start = slot.start.toString().padLeft(2, '0');
+                final end   = (slot.end == 0 ? 24 : slot.end).toString().padLeft(2, '0');
+                return Text('· $start:00 – $end:00');
+              }),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text(
+                  'Cerrar',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   List<Widget> _buildOptionButtons() {
@@ -209,7 +277,7 @@ class _MainScreenState extends State<MainScreen> {
       buttons.add(const SizedBox(height: 12));
       buttons.add(_button(Icons.flag, 'Gestión de Clasificación', GestionClasificacionDenunciasScreen()));
     } else {
-      buttons.add(Center(child: Text('Rol desconocido: \$_role')));
+      buttons.add(Center(child: Text('Rol desconocido: $_role')));
     }
 
     return buttons;

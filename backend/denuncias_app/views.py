@@ -656,54 +656,99 @@ class DenunciaDetailView(AuthRequiredView):
             return JsonResponse({'error': 'Denuncia no encontrada.'}, status=404)
         
 
+def compute_danger_slots(hist_dict: dict[int,int], k=1.0, smooth_m=1):
+    # 1) Convertir dict→lista de 24
+    counts = [hist_dict.get(h, 0) for h in range(24)]
+
+    # 2) Suavizado si smooth_m>0
+    if smooth_m > 0:
+        ext = counts[-smooth_m:] + counts + counts[:smooth_m]
+        counts = [
+            sum(ext[i:i+2*smooth_m+1])/(2*smooth_m+1)
+            for i in range(smooth_m, smooth_m+24)
+        ]
+
+    # 3) Umbral dinámico
+    mu    = sum(counts) / 24
+    sigma = (sum((c - mu)**2 for c in counts) / 24)**0.5
+    thresh = mu + k*sigma
+
+    # 4) Detectar franjas
+    crit = [c >= thresh for c in counts]
+    slots, in_block = [], False
+    for i in range(25):
+        idx = i % 24
+        if crit[idx] and not in_block:
+            start = idx; in_block = True
+        if (not crit[idx] or i == 24) and in_block:
+            end = idx
+            slots.append({'start': start, 'end': end})
+            in_block = False
+
+    return slots
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ClustersView(View):
     """
-    GET /api/clusters?radius=10&threshold=5
-    - radius: radio en metros para considerar vecinos
-    - threshold: número mínimo de puntos para formar un cluster
+    GET /api/denuncias/clusters/?radius=75&threshold=5
     """
     def get(self, request):
         try:
             radius_m = float(request.GET.get('radius', 75.0))
-            min_pts    = int(request.GET.get('threshold', 5))
+            min_pts = int(request.GET.get('threshold', 5))
 
-            # 1) Cargar todas las coordenadas
-            qs = Denuncia.objects.values_list('ubicacion_latitud', 'ubicacion_longitud', 'clasificacion__nombre')
+            # 1) Cargar coordenadas, tipo y hora
+            qs = Denuncia.objects.values_list(
+                'ubicacion_latitud',
+                'ubicacion_longitud',
+                'clasificacion__nombre',
+                'hora'
+            )
             datos = list(qs)
-
             if not datos:
                 return JsonResponse([], safe=False)
 
-            coords = np.array([[lat, lng] for lat, lng, _ in datos])
-            tipos  = [tipo for _, _, tipo in datos]
+            coords = np.array([[lat, lng] for lat, lng, _, _ in datos])
+            tipos = [t for _, _, t, _ in datos]
+            horas = [h.hour for *_, h in datos if h is not None]
 
-            # 2) Convertir a radianes y calcular eps
+            # 2) DBSCAN haversine
             coords_rad = np.radians(coords)
-            eps_rad    = radius_m / 6371000.0
-
-            # 3) DBSCAN haversine
+            eps_rad = radius_m / 6371000.0
             db = DBSCAN(eps=eps_rad, min_samples=min_pts, metric='haversine')
             labels = db.fit_predict(coords_rad)
 
-            # 4) Agrupar puntos etiquetados
+            # 3) Agrupar índices por cluster
             clusters = {}
             for idx, lbl in enumerate(labels):
                 if lbl == -1:
                     continue
                 clusters.setdefault(lbl, []).append(idx)
 
-            # 5) Construir salida
+            # 4) Construir salida enriquecida
             salida = []
             for pts in clusters.values():
                 agrup = coords[pts]
                 tipos_agr = [tipos[i] for i in pts]
+                horas_agr = [datos[i][3].hour for i in pts if datos[i][3] is not None]
                 centroide = agrup.mean(axis=0)
+
+                # Histograma por hora
+                hist = {h: horas_agr.count(h) for h in range(24)}
+                # Conteo por tipo de delito
+                delitos_count = dict(Counter(tipos_agr))
+                # Franjas peligrosas
+                danger_slots = compute_danger_slots(hist, k=1.0, smooth_m=1)
+
                 salida.append({
                     'lat': float(centroide[0]),
                     'lng': float(centroide[1]),
                     'cantidad': len(pts),
                     'tipo_comun': Counter(tipos_agr).most_common(1)[0][0],
+                    'delitos': delitos_count,
+                    'hour_histogram': hist,
+                    'danger_slots': danger_slots,
                 })
 
             return JsonResponse(salida, safe=False)
