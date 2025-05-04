@@ -541,12 +541,8 @@ class ClasificacionDetailView(AuthRequiredView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DenunciasView(AuthRequiredView):
-    """
-    GET  /api/denuncias    -> Lista todas las denuncias
-    POST /api/denuncias    -> Crea una nueva denuncia
-    """
     def get(self, request):
-        qs = Denuncia.objects.select_related('clasificacion', 'otra_clasificacion')\
+        qs = Denuncia.objects.select_related('clasificacion', 'otra_clasificacion', 'usuario')\
                               .prefetch_related('imagenes')\
                               .order_by('-fecha', '-hora')
         data = []
@@ -556,8 +552,25 @@ class DenunciasView(AuthRequiredView):
                 'descripcion': d.descripcion,
                 'fecha': d.fecha.isoformat(),
                 'hora': d.hora.strftime('%H:%M') if d.hora else None,
-                'clasificacion': d.clasificacion.nombre if d.clasificacion else None,
-                'otra_clasificacion': d.otra_clasificacion.nombre if d.otra_clasificacion else None,
+
+                'clasificacion': {
+                    'id': d.clasificacion.id,
+                    'nombre': d.clasificacion.nombre
+                } if d.clasificacion else None,
+
+                'otra_clasificacion': {
+                    'id': d.otra_clasificacion.id,
+                    'nombre': d.otra_clasificacion.nombre
+                } if d.otra_clasificacion else None,
+
+                # Información completa del usuario
+                'usuario': {
+                    'nombre': d.usuario.nombre,
+                    'cedula': d.usuario.cedula,
+                    'telefono': d.usuario.telefono,
+                    'email': d.usuario.email,
+                },
+
                 'ubicacion_latitud': d.ubicacion_latitud,
                 'ubicacion_longitud': d.ubicacion_longitud,
                 'imagenes': [request.build_absolute_uri(img.imagen.url) for img in d.imagenes.all()],
@@ -581,6 +594,7 @@ class DenunciasView(AuthRequiredView):
 
             with transaction.atomic():
                 d = Denuncia.objects.create(
+                    usuario=request.user,
                     descripcion=descripcion,
                     fecha=fecha_obj,
                     hora=hora_obj,

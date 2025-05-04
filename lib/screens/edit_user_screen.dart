@@ -276,7 +276,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Ubicación en el mapa',
+                'Ubicación de mi hogar',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

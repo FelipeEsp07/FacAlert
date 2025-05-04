@@ -8,6 +8,7 @@ import 'gestion_roles_screen.dart';
 import 'gest_usuarios.dart';
 import 'gestion_clasificacion_denuncias.dart';
 import 'edit_user_screen.dart';
+import 'lista_denuncias_screen.dart';
 
 import '../models/cluster.dart' as model;
 import '../services/cluster_service.dart';
@@ -78,7 +79,7 @@ class _MainScreenState extends State<MainScreen> {
         _buildCircleClusterMap();
       });
     } catch (e) {
-      debugPrint('Error al cargar clusters: $e');
+      debugPrint('Error al cargar clusters: \$e');
     }
   }
 
@@ -267,7 +268,9 @@ class _MainScreenState extends State<MainScreen> {
     if (_role == 'usuario') {
       buttons.add(_button(Icons.report, 'Reportar un Problema', RealizarDenunciaScreen()));
     } else if (_role == 'moderador') {
-      buttons.add(_button(Icons.admin_panel_settings, 'Vista Moderador', null, routeName: '/vistaModerador'));
+      buttons.add(_button(Icons.check_circle, 'Revisar Denuncias', const ListaDenunciasScreen()));
+      buttons.add(const SizedBox(height: 12));
+      buttons.add(_button(Icons.report, 'Reportar un Problema', RealizarDenunciaScreen()));
     } else if (_role == 'administrador') {
       buttons.add(_button(Icons.admin_panel_settings, 'Vista Administrador', null, routeName: '/vistaAdministrador'));
       buttons.add(const SizedBox(height: 12));

@@ -48,30 +48,35 @@ class ClasificacionDenuncia(models.Model):
 
 
 class Denuncia(models.Model):
+    usuario = models.ForeignKey(
+        'Usuario',
+        related_name='denuncias',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     descripcion = models.TextField()
     ubicacion_latitud = models.FloatField()
     ubicacion_longitud = models.FloatField()
     fecha = models.DateField()
-    hora = models.TimeField(null=True, blank=True) 
-    
+    hora = models.TimeField(null=True, blank=True)
     clasificacion = models.ForeignKey(
-        ClasificacionDenuncia, 
+        ClasificacionDenuncia,
         related_name='denuncias_principal',
         on_delete=models.PROTECT,
-        null=True, 
-        blank=True
+        null=True,
+        blank=True,
     )
     otra_clasificacion = models.ForeignKey(
-        ClasificacionDenuncia, 
+        ClasificacionDenuncia,
         related_name='denuncias_secundaria',
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
-    
-    def __str__(self):
-        return f'Denuncia {self.id} - {self.clasificacion.nombre}'
 
+    def __str__(self):
+        return f'Denuncia {self.id} - {self.clasificacion.nombre if self.clasificacion else ""}'
 
 class ImagenDenuncia(models.Model):
     denuncia = models.ForeignKey(Denuncia, on_delete=models.CASCADE, related_name='imagenes')
