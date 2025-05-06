@@ -1,6 +1,5 @@
 from django.db import models
 
-from django.db import models
 from django.contrib.auth.hashers import make_password
 
 class Rol(models.Model):
@@ -48,6 +47,12 @@ class ClasificacionDenuncia(models.Model):
 
 
 class Denuncia(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING',  'Pendiente'),
+        ('APPROVED', 'Aprobada'),
+        ('REJECTED', 'Rechazada'),
+    ]
+
     usuario = models.ForeignKey(
         'Usuario',
         related_name='denuncias',
@@ -75,8 +80,15 @@ class Denuncia(models.Model):
         blank=True,
     )
 
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='PENDING',
+        help_text='Estado de la denuncia: pendiente, aprobada o rechazada'
+    )
+
     def __str__(self):
-        return f'Denuncia {self.id} - {self.clasificacion.nombre if self.clasificacion else ""}'
+        return f'Denuncia {self.id} [{self.get_status_display()}]'
 
 class ImagenDenuncia(models.Model):
     denuncia = models.ForeignKey(Denuncia, on_delete=models.CASCADE, related_name='imagenes')

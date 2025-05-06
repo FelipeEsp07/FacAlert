@@ -1,4 +1,3 @@
-from django.http import JsonResponse
 from .models import Usuario, Rol, ClasificacionDenuncia, Denuncia, ImagenDenuncia
 from django.contrib.auth.hashers import make_password, check_password
 from django.views.decorators.csrf import csrf_exempt
@@ -14,8 +13,6 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from collections import Counter
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 class AdminRequiredView(View):
     """
@@ -542,9 +539,13 @@ class ClasificacionDetailView(AuthRequiredView):
 @method_decorator(csrf_exempt, name='dispatch')
 class DenunciasView(AuthRequiredView):
     def get(self, request):
-        qs = Denuncia.objects.select_related('clasificacion', 'otra_clasificacion', 'usuario')\
-                              .prefetch_related('imagenes')\
-                              .order_by('-fecha', '-hora')
+        qs = Denuncia.objects.select_related(
+            'clasificacion',
+            'otra_clasificacion',
+            'usuario'
+        ).prefetch_related('imagenes')\
+         .order_by('-fecha', '-hora')
+
         data = []
         for d in qs:
             data.append({
@@ -555,15 +556,16 @@ class DenunciasView(AuthRequiredView):
 
                 'clasificacion': {
                     'id': d.clasificacion.id,
-                    'nombre': d.clasificacion.nombre
+                    'nombre': d.clasificacion.nombre,
                 } if d.clasificacion else None,
 
                 'otra_clasificacion': {
                     'id': d.otra_clasificacion.id,
-                    'nombre': d.otra_clasificacion.nombre
+                    'nombre': d.otra_clasificacion.nombre,
                 } if d.otra_clasificacion else None,
 
-                # Información completa del usuario
+                'status': d.status,
+
                 'usuario': {
                     'nombre': d.usuario.nombre,
                     'cedula': d.usuario.cedula,
@@ -573,8 +575,12 @@ class DenunciasView(AuthRequiredView):
 
                 'ubicacion_latitud': d.ubicacion_latitud,
                 'ubicacion_longitud': d.ubicacion_longitud,
-                'imagenes': [request.build_absolute_uri(img.imagen.url) for img in d.imagenes.all()],
+                'imagenes': [
+                    request.build_absolute_uri(img.imagen.url)
+                    for img in d.imagenes.all()
+                ],
             })
+
         return JsonResponse({'denuncias': data}, status=200)
 
     def post(self, request):
@@ -636,6 +642,7 @@ class DenunciaDetailView(AuthRequiredView):
                 'otra_clasificacion': d.otra_clasificacion.nombre if d.otra_clasificacion else None,
                 'ubicacion_latitud': d.ubicacion_latitud,
                 'ubicacion_longitud': d.ubicacion_longitud,
+                'status': d.status, 
                 'imagenes': [request.build_absolute_uri(img.imagen.url) for img in d.imagenes.all()],
             }, status=200)
         except Denuncia.DoesNotExist:
@@ -645,18 +652,44 @@ class DenunciaDetailView(AuthRequiredView):
         try:
             data = json.loads(request.body)
             d = Denuncia.objects.get(id=pk)
-            for field in ['descripcion','fecha','hora','clasificacion_id',
-                          'otra_clasificacion_id','ubicacion_latitud','ubicacion_longitud']:
+
+            new_status = data.get('status')
+            if new_status in ['APPROVED', 'REJECTED']:
+                if not request.user.rol or request.user.rol.nombre != 'Moderador':
+                    return JsonResponse(
+                        {'error': 'Permiso denegado: sólo moderador puede aprobar/rechazar.'},
+                        status=403
+                    )
+                d.status = new_status
+                d.save()
+                return JsonResponse(
+                    {'message': f'Denuncia {new_status.lower()} correctamente.'},
+                    status=200
+                )
+
+            editable_fields = [
+                'descripcion','fecha','hora',
+                'clasificacion_id','otra_clasificacion_id',
+                'ubicacion_latitud','ubicacion_longitud'
+            ]
+            for field in editable_fields:
                 if field in data:
                     val = data[field]
                     if field == 'fecha':
-                        setattr(d, field, datetime.fromisoformat(val).date())
+                        d.fecha = datetime.fromisoformat(val).date()
                     elif field == 'hora' and val:
-                        setattr(d, field, datetime.fromisoformat(val).time())
+                        d.hora = datetime.fromisoformat(val).time()
                     else:
-                        setattr(d, field.replace('_id',''), val if not field.endswith('_id') else int(val))
+                        attr = field.replace('_id', '')
+                        setattr(
+                            d,
+                            attr,
+                            int(val) if field.endswith('_id') else val
+                        )
+
             d.save()
             return JsonResponse({'message': 'Denuncia actualizada.'}, status=200)
+
         except Denuncia.DoesNotExist:
             return JsonResponse({'error': 'Denuncia no encontrada.'}, status=404)
         except (ValueError, IntegrityError) as e:
