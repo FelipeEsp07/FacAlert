@@ -8,6 +8,7 @@ class Denuncia {
   final String? hora;
   final ClasificacionDenuncia? clasificacion;
   final ClasificacionDenuncia? otraClasificacion;
+  final String status;
   final String usuarioNombre;
   final String usuarioCedula;
   final String usuarioTelefono;
@@ -23,6 +24,7 @@ class Denuncia {
     this.hora,
     this.clasificacion,
     this.otraClasificacion,
+    required this.status,
     required this.usuarioNombre,
     required this.usuarioCedula,
     required this.usuarioTelefono,
@@ -45,6 +47,8 @@ class Denuncia {
       hora: json['hora'] as String?,
       clasificacion: _parseClas(json['clasificacion']),
       otraClasificacion: _parseClas(json['otra_clasificacion']),
+      // Evitar el error de null casteado a String:
+      status: json['status'] as String? ?? 'PENDING',
       usuarioNombre: usuario['nombre'] as String? ?? '—',
       usuarioCedula: usuario['cedula'] as String? ?? '',
       usuarioTelefono: usuario['telefono'] as String? ?? '',
@@ -54,4 +58,23 @@ class Denuncia {
       imagenes: (json['imagenes'] as List<dynamic>).cast<String>(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'descripcion': descripcion,
+        'fecha': fecha,
+        'hora': hora,
+        'clasificacion_id': clasificacion?.id,
+        'otra_clasificacion_id': otraClasificacion?.id,
+        'status': status,
+        'usuario': {
+          'nombre': usuarioNombre,
+          'cedula': usuarioCedula,
+          'telefono': usuarioTelefono,
+          'email': usuarioEmail,
+        },
+        'ubicacion_latitud': ubicacionLatitud,
+        'ubicacion_longitud': ubicacionLongitud,
+        'imagenes': imagenes,
+      };
 }

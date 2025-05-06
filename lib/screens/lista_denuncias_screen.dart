@@ -75,8 +75,7 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
       builder: (context) => AlertDialog(
         title: const Text('¿Eliminar denuncia?'),
         content: const Text(
-          '¿Estás seguro que quieres eliminar esta denuncia? Esta acción no se puede deshacer.'
-        ),
+            '¿Estás seguro que quieres eliminar esta denuncia? Esta acción no se puede deshacer.'),
         actions: [
           TextButton(
             child: const Text('Cancelar'),
@@ -124,6 +123,38 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
     }
   }
 
+  Future<void> _approveDenuncia(int id) async {
+    setState(() => _loading = true);
+    try {
+      final token = await _getToken();
+      if (token == null) throw 'No se encontró el token de sesión';
+
+      final res = await http.put(
+        Uri.parse('$apiBaseUrl/denuncias/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode({'status': 'APPROVED'}),
+      );
+
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Denuncia aprobada')),
+        );
+        await _fetchDenuncias();
+      } else {
+        throw 'Error ${res.statusCode}: ${res.body}';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No pude aprobar la denuncia: $e')),
+      );
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,7 +188,8 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
           Expanded(
             child: _loading
                 ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
+                    child:
+                        CircularProgressIndicator(color: Color(0xFF2E7D32)))
                 : _filteredDenuncias.isEmpty
                     ? const Center(
                         child: Text(
@@ -179,8 +211,9 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                               elevation: 6,
                               shadowColor: Colors.black26,
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
                                 leading: CircleAvatar(
                                   radius: 28,
                                   backgroundColor: Colors.green[100],
@@ -203,7 +236,8 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                                   'Usuario: ${d.usuarioNombre}\n'
                                   'Fecha y hora: ${d.fecha} ${d.hora ?? ''}',
                                   style: const TextStyle(
-                                      fontSize: 14, color: Colors.black54),
+                                      fontSize: 14,
+                                      color: Colors.black54),
                                 ),
                                 isThreeLine: true,
                                 trailing: Row(
@@ -217,17 +251,28 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (_) => DetalleDenunciaScreen(denuncia: d),
-                                            ),
-                                          );
+                                            builder: (_) =>
+                                                DetalleDenunciaScreen(
+                                                    denuncia: d),
+                                          ),
+                                        );
                                       },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _iconButtonCircle(
+                                      icon: Icons.check,
+                                      iconColor: Colors.green,
+                                      bgColor: Colors.green[50]!,
+                                      onTap: () =>
+                                          _approveDenuncia(d.id),
                                     ),
                                     const SizedBox(width: 8),
                                     _iconButtonCircle(
                                       icon: Icons.delete,
                                       iconColor: Colors.red,
                                       bgColor: Colors.red[50]!,
-                                      onTap: () => _confirmDeleteDenuncia(d.id),
+                                      onTap: () =>
+                                          _confirmDeleteDenuncia(d.id),
                                     ),
                                   ],
                                 ),
