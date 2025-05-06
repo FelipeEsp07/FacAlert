@@ -129,6 +129,41 @@ class _GestionClasificacionDenunciasScreenState
     setState(() => _isSaving = false);
   }
 
+  Future<void> _confirmDeleteClasificacion(int id, String nombre) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar clasificación'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Clasificación: “$nombre”'),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta acción es irreversible. ¿Deseas continuar?',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Sí, eliminar'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteClasificacion(id);
+    }
+  }
+
   Future<void> _deleteClasificacion(int id) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
@@ -254,7 +289,7 @@ class _GestionClasificacionDenunciasScreenState
                                       color: Colors.red,
                                     ),
                                     onPressed: () =>
-                                        _deleteClasificacion(c.id),
+                                        _confirmDeleteClasificacion(c.id, c.nombre),
                                   ),
                                 ),
                               );

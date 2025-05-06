@@ -57,19 +57,26 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
 
     final response = await http.get(
       Uri.parse('$apiBaseUrl/roles'),
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body) as Map<String, dynamic>;
       final rolesJson = data['roles'] as List<dynamic>;
       setState(() {
-        roles = rolesJson.map((e) => Role.fromJson(e as Map<String, dynamic>)).toList();
+        roles = rolesJson
+            .map((e) => Role.fromJson(e as Map<String, dynamic>))
+            .toList();
         _isLoading = false;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cargar los roles: ${response.reasonPhrase}')),
+        SnackBar(
+            content:
+                Text('Error al cargar los roles: ${response.reasonPhrase}')),
       );
       setState(() => _isLoading = false);
     }
@@ -89,7 +96,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
     final body = json.encode({'nombre': _roleController.text.trim()});
     final response = await http.post(
       Uri.parse('$apiBaseUrl/roles'),
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
       body: body,
     );
 
@@ -115,6 +125,41 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
     setState(() => _isSaving = false);
   }
 
+  Future<void> _confirmDeleteRole(int roleId, String roleName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar rol'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Rol: “$roleName”'),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta acción es irreversible. ¿Deseas continuar?',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancelar'),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Sí, eliminar'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteRole(roleId);
+    }
+  }
+
   Future<void> _deleteRole(int roleId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
@@ -125,7 +170,10 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
 
     final response = await http.delete(
       Uri.parse('$apiBaseUrl/roles/$roleId'),
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
     );
 
     if (response.statusCode == 200) {
@@ -175,9 +223,8 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                             labelText: 'Nombre del Rol',
                             border: OutlineInputBorder(),
                           ),
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Ingrese el nombre del rol'
-                              : null,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Ingrese el nombre del rol' : null,
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
@@ -209,9 +256,7 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                   const Text(
                     'Roles Registrados',
                     style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromARGB(255, 0, 0, 0)),
+                        fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   const SizedBox(height: 10),
                   Expanded(
@@ -226,11 +271,9 @@ class _GestionRolesScreenState extends State<GestionRolesScreen> {
                                 child: ListTile(
                                   title: Text(role.nombre),
                                   trailing: IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () => _deleteRole(role.id),
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () =>
+                                        _confirmDeleteRole(role.id, role.nombre),
                                   ),
                                 ),
                               );

@@ -23,6 +23,7 @@ class MainScreen extends StatefulWidget {
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
+
 String _formatHour12(int hour24) {
   final h = hour24 % 24;
   final period = h < 12 ? 'AM' : 'PM';
@@ -83,7 +84,6 @@ class _MainScreenState extends State<MainScreen> {
     // 3) Si permisos OK, inicializar notifs y posición real
     if (!_permsDenied) {
       _initNotifications();
-
       _posSub = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -302,17 +302,14 @@ class _MainScreenState extends State<MainScreen> {
           ),
           accountName: Text(_nombre,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          accountEmail:
-              Text(_email, style: const TextStyle(fontSize: 14)),
+          accountEmail: Text(_email, style: const TextStyle(fontSize: 14)),
         ),
         ListTile(
           leading: const Icon(Icons.home),
           title: const Text('Inicio'),
           onTap: () async {
             Navigator.pop(context);
-            // 1) recargar clusters
             await _loadClusters();
-            // 2) centrar cámara
             if (_mapReady) {
               final target = (!_permsDenied && _userLat != null && _userLng != null)
                   ? LatLng(_userLat!, _userLng!)
@@ -332,13 +329,13 @@ class _MainScreenState extends State<MainScreen> {
             MaterialPageRoute(builder: (_) => const EditUserScreen(esAdmin: false)),
           ),
         ),
-        if (_role == 'usuario' || _role == 'administrador')
+        if (_role == 'usuario')
           ListTile(
             leading: const Icon(Icons.report),
             title: const Text('Mis Denuncias'),
             onTap: () => Navigator.pushNamed(context, '/misDenuncias'),
           ),
-        if (_role == 'moderador' || _role == 'administrador')
+        if (_role == 'moderador')
           ListTile(
             leading: const Icon(Icons.check_circle),
             title: const Text('Aprobar Denuncias'),
@@ -383,11 +380,7 @@ class _MainScreenState extends State<MainScreen> {
       buttons.add(_button(Icons.report, 'Reportar un Problema', RealizarDenunciaScreen()));
     } else if (_role == 'moderador') {
       buttons.add(_button(Icons.check_circle, 'Revisar Denuncias', const ListaDenunciasScreen()));
-      buttons.add(const SizedBox(height: 12));
-      buttons.add(_button(Icons.report, 'Reportar un Problema', RealizarDenunciaScreen()));
     } else if (_role == 'administrador') {
-      buttons.add(_button(Icons.admin_panel_settings, 'Vista Administrador', null, routeName: '/vistaAdministrador'));
-      buttons.add(const SizedBox(height: 12));
       buttons.add(_button(Icons.settings, 'Gestión de Roles', GestionRolesScreen()));
       buttons.add(const SizedBox(height: 12));
       buttons.add(_button(Icons.group, 'Gestión de Usuarios', GestUsuariosScreen()));
@@ -445,9 +438,7 @@ class _MainScreenState extends State<MainScreen> {
               const Text('No se detectan franjas críticas.')
             else
               ...c.dangerSlots.map((slot) {
-                // convertimos start y end a formato 12h
                 final startLabel = _formatHour12(slot.start);
-                // si end == 0 lo interpretamos como medianoche (24:00)
                 final endHour = slot.end == 0 ? 24 : slot.end;
                 final endLabel = _formatHour12(endHour);
                 return Text('· $startLabel – $endLabel');

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../screens/detalle_denuncias_screen.dart';
 
+import '../screens/detalle_denuncias_screen.dart';
 import '../config.dart';
 import '../models/denuncia.dart';
 
@@ -199,7 +199,8 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.all(16),
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 12),
                         itemCount: _filteredDenuncias.length,
                         itemBuilder: (context, i) {
                           final d = _filteredDenuncias[i];
@@ -216,10 +217,16 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                                         horizontal: 16, vertical: 12),
                                 leading: CircleAvatar(
                                   radius: 28,
-                                  backgroundColor: Colors.green[100],
-                                  child: const Icon(
-                                    Icons.report_problem,
-                                    color: Colors.green,
+                                  backgroundColor: d.status == 'APPROVED'
+                                      ? Colors.green[100]
+                                      : Colors.green[50],
+                                  child: Icon(
+                                    d.status == 'APPROVED'
+                                        ? Icons.check_circle
+                                        : Icons.report_problem,
+                                    color: d.status == 'APPROVED'
+                                        ? Colors.green
+                                        : Colors.green[700],
                                     size: 30,
                                   ),
                                 ),
@@ -243,6 +250,7 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    // Ver
                                     _iconButtonCircle(
                                       icon: Icons.visibility,
                                       iconColor: Colors.blue,
@@ -258,15 +266,24 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
                                         );
                                       },
                                     ),
-                                    const SizedBox(width: 8),
-                                    _iconButtonCircle(
-                                      icon: Icons.check,
-                                      iconColor: Colors.green,
-                                      bgColor: Colors.green[50]!,
-                                      onTap: () =>
-                                          _approveDenuncia(d.id),
-                                    ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 6),
+                                    // Aprobar (si no está aprobado)
+                                    if (d.status != 'APPROVED') ...[
+                                      _iconButtonCircle(
+                                        icon: Icons.check,
+                                        iconColor: Colors.green,
+                                        bgColor: Colors.green[50]!,
+                                        onTap: () => _approveDenuncia(d.id),
+                                      ),
+                                      const SizedBox(width: 6),
+                                    ] else
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                        size: 20,
+                                      ),
+                                    const SizedBox(width: 6),
+                                    // Eliminar
                                     _iconButtonCircle(
                                       icon: Icons.delete,
                                       iconColor: Colors.red,
@@ -293,9 +310,19 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
     required Color bgColor,
     required VoidCallback onTap,
   }) {
-    return CircleAvatar(
-      backgroundColor: bgColor,
-      child: IconButton(icon: Icon(icon, color: iconColor), onPressed: onTap),
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: bgColor,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: iconColor),
+        iconSize: 16,
+        padding: EdgeInsets.zero,
+        onPressed: onTap,
+      ),
     );
   }
 }
