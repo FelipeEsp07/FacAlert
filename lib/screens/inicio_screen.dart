@@ -6,8 +6,6 @@ class InicioScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -67,7 +65,7 @@ class InicioScreen extends StatelessWidget {
                         CustomButton(
                           text: 'Iniciar Sesión',
                           onPressed: () => Navigator.pushNamed(context, '/iniciar'),
-                          backgroundColor: theme.colorScheme.primary,
+                          backgroundColor: const Color(0xFF2E7D32),
                           textColor: Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -77,7 +75,7 @@ class InicioScreen extends StatelessWidget {
                         CustomButton(
                           text: 'Registrarse',
                           onPressed: () => Navigator.pushNamed(context, '/registro'),
-                          backgroundColor: theme.colorScheme.secondary,
+                          backgroundColor: const Color(0xFF2E7D32),
                           textColor: Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -103,7 +101,10 @@ class ArcClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final path = Path();
     path.lineTo(0, size.height - 50);
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 50);
+    path.quadraticBezierTo(
+      size.width / 2, size.height,
+      size.width, size.height - 50,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;

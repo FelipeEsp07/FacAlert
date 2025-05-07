@@ -180,7 +180,10 @@ class _EditDenunciaScreenState extends State<EditDenunciaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Editar Denuncia'),
+        title: const Text(
+          'Editar Denuncia',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.green[700],
       ),
       body: SingleChildScrollView(
@@ -238,15 +241,21 @@ class _EditDenunciaScreenState extends State<EditDenunciaScreen> {
               const SizedBox(height: 20),
               _saving
                   ? const CircularProgressIndicator()
-                  : ElevatedButton.icon(
-                      onPressed: _save,
-                      icon: const Icon(Icons.save),
-                      label: const Text('Guardar Cambios'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  : SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _save,
+                        icon: const Icon(Icons.save, color: Colors.white),
+                        label: const Text(
+                          'Guardar Cambios',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[700],
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),

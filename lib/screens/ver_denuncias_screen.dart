@@ -150,7 +150,10 @@ class _VerDenunciasScreenState extends State<VerDenunciasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Denuncias'),
+        title: const Text(
+          'Mis Denuncias',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF2E7D32),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),

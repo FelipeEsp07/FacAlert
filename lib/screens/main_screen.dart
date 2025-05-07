@@ -32,46 +32,39 @@ String _formatHour12(int hour24) {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  late Future<void> _initFuture;
+  // Servicios y datos de usuario
   late ClusterService _clusterService;
-  List<model.Cluster> _clusters = [];
-  Map<CircleId, model.Cluster> _circleClusterMap = {};
-
-  String _nombre = '';
-  String _email = '';
-  String _role = 'usuario';
-
-  double? _userLat;
-  double? _userLng;
-
+  String _nombre = '', _email = '', _role = 'usuario';
   bool _permsDenied = false;
+
+  // Mapa y ubicación
+  static const LatLng _facaCenter = LatLng(4.60971, -74.08175);
+  CameraPosition _initialCamera = const CameraPosition(target: _facaCenter, zoom: 15);
+  late GoogleMapController _mapController;
   bool _mapReady = false;
 
-  static const LatLng _facaCenter = LatLng(4.60971, -74.08175);
-
-  CameraPosition _initialCamera = const CameraPosition(
-    target: _facaCenter,
-    zoom: 15,
-  );
-
-  late GoogleMapController _mapController;
-  late FlutterLocalNotificationsPlugin _localNotif;
+  double? _userLat, _userLng;
   StreamSubscription<Position>? _posSub;
+
+  // Mapa de círculos (clusters)
+  final Map<CircleId, model.Cluster> _circleClusterMap = {};
   final Set<String> _notifiedClusters = {};
+
+  // Notificaciones locales
+  late FlutterLocalNotificationsPlugin _localNotif;
 
   @override
   void initState() {
     super.initState();
-    _initFuture = _initialize();
+    _initUserAndLocation();
+    _initClusterLoading(); // no await para no bloquear UI
   }
 
-  Future<void> _initialize() async {
-    // 1) Pedir permisos
+  Future<void> _initUserAndLocation() async {
     final locStatus = await Permission.locationWhenInUse.request();
     final notifStatus = await Permission.notification.request();
     _permsDenied = !(locStatus.isGranted && notifStatus.isGranted);
 
-    // 2) Cargar prefs y clusters siempre
     final prefs = await SharedPreferences.getInstance();
     _nombre = prefs.getString('user_nombre')?.trim() ?? '';
     _email = prefs.getString('user_email')?.trim() ?? '';
@@ -79,9 +72,7 @@ class _MainScreenState extends State<MainScreen> {
 
     final token = prefs.getString('jwt_token') ?? '';
     _clusterService = ClusterService(baseUrl: Config.apiBase, token: token);
-    await _loadClusters();
 
-    // 3) Si permisos OK, inicializar notifs y posición real
     if (!_permsDenied) {
       _initNotifications();
       _posSub = Geolocator.getPositionStream(
@@ -89,50 +80,47 @@ class _MainScreenState extends State<MainScreen> {
           accuracy: LocationAccuracy.high,
           distanceFilter: 10,
         ),
-      ).listen((pos) {
-        setState(() {
-          _userLat = pos.latitude;
-          _userLng = pos.longitude;
-        });
-        if (_mapReady) {
-          _mapController.animateCamera(
-            CameraUpdate.newLatLngZoom(
-              LatLng(_userLat!, _userLng!),
-              16,
-            ),
-          );
-        }
-        _checkProximity();
-      });
+      ).listen(_onPositionUpdate);
     }
+    setState(() {}); // para render inicial
+  }
+
+  void _initClusterLoading() {
+    _loadClusters();
   }
 
   Future<void> _loadClusters() async {
     try {
       final list = await _clusterService.fetchClusters(threshold: 3);
-      setState(() {
-        _clusters = list;
-        _buildCircleClusterMap();
-      });
+      _circleClusterMap.clear();
+      for (var c in list.where((c) => c.cantidad >= 3)) {
+        _circleClusterMap[CircleId('${c.lat}-${c.lng}')] = c;
+      }
+      setState(() {}); // actualiza círculos
     } catch (e) {
       debugPrint('Error al cargar clusters: $e');
     }
   }
 
-  void _buildCircleClusterMap() {
-    _circleClusterMap.clear();
-    for (var c in _clusters.where((c) => c.cantidad >= 3)) {
-      _circleClusterMap[CircleId('${c.lat}-${c.lng}')] = c;
+  void _onPositionUpdate(Position pos) {
+    _userLat = pos.latitude;
+    _userLng = pos.longitude;
+    if (_mapReady) {
+      _mapController.animateCamera(CameraUpdate.newLatLngZoom(
+        LatLng(_userLat!, _userLng!), 16,
+      ));
     }
+    _checkProximity();
+    setState(() {}); // actualiza marcador usuario
   }
 
   void _initNotifications() {
     _localNotif = FlutterLocalNotificationsPlugin();
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings();
-    _localNotif.initialize(
-      const InitializationSettings(android: androidSettings, iOS: iosSettings),
-    );
+    _localNotif.initialize(const InitializationSettings(
+      android: androidSettings, iOS: iosSettings,
+    ));
   }
 
   void _checkProximity() {
@@ -142,8 +130,7 @@ class _MainScreenState extends State<MainScreen> {
       final id = entry.key.value;
       final c = entry.value;
       final dist = Geolocator.distanceBetween(
-        _userLat!, _userLng!,
-        c.lat, c.lng,
+        _userLat!, _userLng!, c.lat, c.lng,
       );
       final inside = dist <= dangerRadius;
       final already = _notifiedClusters.contains(id);
@@ -151,7 +138,7 @@ class _MainScreenState extends State<MainScreen> {
       if (inside && !already) {
         _showNotification(
           title: '¡Zona de peligro!',
-          body: 'Estás dentro de una zona con ${c.cantidad} denuncias, ten precaución.',
+          body: 'Estás dentro de una zona con ${c.cantidad} denuncias.',
         );
         _notifiedClusters.add(id);
       } else if (!inside && already) {
@@ -159,7 +146,7 @@ class _MainScreenState extends State<MainScreen> {
       } else if (dist <= dangerRadius * 2 && !already) {
         _showNotification(
           title: 'Cuidado cerca de zona de peligro',
-          body: 'Te estás acercando a una zona con ${c.cantidad} denuncias.',
+          body: 'Te acercas a una zona con ${c.cantidad} denuncias.',
         );
       }
     }
@@ -170,16 +157,12 @@ class _MainScreenState extends State<MainScreen> {
     required String body,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'danger_channel',
-      'Zonas de Peligro',
-      importance: Importance.max,
-      priority: Priority.high,
+      'danger_channel', 'Zonas de Peligro',
+      importance: Importance.max, priority: Priority.high,
     );
     const iosDetails = DarwinNotificationDetails();
     await _localNotif.show(
-      0,
-      title,
-      body,
+      0, title, body,
       const NotificationDetails(android: androidDetails, iOS: iosDetails),
     );
   }
@@ -200,76 +183,72 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _initFuture,
-      builder: (ctx, snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        return Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF2E7D32),
-            automaticallyImplyLeading: false,
-            title: Row(
-              children: [
-                Builder(
-                  builder: (c) => IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white),
-                    onPressed: () => Scaffold.of(c).openDrawer(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text('Mapa de Zonas de Peligro',
-                    style: TextStyle(color: Colors.white)),
-              ],
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF2E7D32),
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            Builder(
+              builder: (c) => IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: () => Scaffold.of(c).openDrawer(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('Mapa de Zonas de Peligro',
+              style: TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+      drawer: _buildDrawer(),
+      body: Column(
+        children: [
+          Expanded(
+            flex: 3,
+            child: GoogleMap(
+              initialCameraPosition: _initialCamera,
+              onMapCreated: (ctrl) {
+                _mapController = ctrl;
+                _mapReady = true;
+                if (_userLat != null) {
+                  _mapController.moveCamera(
+                    CameraUpdate.newLatLngZoom(
+                      LatLng(_userLat!, _userLng!), 16,
+                    ),
+                  );
+                }
+              },
+              markers: _buildMarkers(),
+              circles: _buildCircles(),
+              myLocationEnabled: !_permsDenied,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
             ),
           ),
-          drawer: _buildDrawer(),
-          body: Column(
-            children: [
-              Expanded(
-                flex: 3,
-                child: GoogleMap(
-                  initialCameraPosition: _initialCamera,
-                  onMapCreated: (ctrl) {
-                    _mapController = ctrl;
-                    _mapReady = true;
-                  },
-                  markers: _buildMarkers(),
-                  circles: _buildCircles(),
-                  myLocationEnabled: !_permsDenied,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _buildOptionButtons(),
                 ),
               ),
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: _buildOptionButtons(),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text(
-                  'Nota: Las denuncias realizadas aquí no reemplazan las denuncias formales ante la Fiscalía '
-                  'ni reflejan el comportamiento de los habitantes de las zonas reportadas.',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
+            ),
           ),
-
-        );
-      },
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'Nota: Las denuncias realizadas aquí no reemplazan las denuncias formales ante la Fiscalía '
+                  'ni reflejan el comportamiento de los habitantes de las zonas reportadas.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -287,19 +266,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Set<Circle> _buildCircles() => _circleClusterMap.entries.map((e) {
-        final c = e.value;
-        final isDanger = c.cantidad >= 5;
-        return Circle(
-          circleId: e.key,
-          center: LatLng(c.lat, c.lng),
-          radius: 100,
-          fillColor: (isDanger ? Colors.red : Colors.yellow).withOpacity(0.3),
-          strokeColor: isDanger ? Colors.red : Colors.yellow,
-          strokeWidth: 1,
-          consumeTapEvents: true,
-          onTap: () => _showClusterInfo(c),
-        );
-      }).toSet();
+    final c = e.value;
+    final isDanger = c.cantidad >= 5;
+    return Circle(
+      circleId: e.key,
+      center: LatLng(c.lat, c.lng),
+      radius: 100,
+      fillColor: (isDanger ? Colors.red : Colors.yellow).withOpacity(0.3),
+      strokeColor: isDanger ? Colors.red : Colors.yellow,
+      strokeWidth: 1,
+      consumeTapEvents: true,
+      onTap: () => _showClusterInfo(c),
+    );
+  }).toSet();
 
   Widget _buildDrawer() {
     return Drawer(
@@ -311,20 +290,20 @@ class _MainScreenState extends State<MainScreen> {
             child: Icon(Icons.person, color: Color(0xFF2E7D32), size: 40),
           ),
           accountName: Text(_nombre,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           accountEmail: Text(_email, style: const TextStyle(fontSize: 14)),
         ),
         ListTile(
           leading: const Icon(Icons.home),
           title: const Text('Inicio'),
-          onTap: () async {
+          onTap: () {
             Navigator.pop(context);
-            await _loadClusters();
+            _loadClusters();
             if (_mapReady) {
-              final target = (!_permsDenied && _userLat != null && _userLng != null)
-                  ? LatLng(_userLat!, _userLng!)
-                  : _facaCenter;
-              final zoom = (!_permsDenied && _userLat != null) ? 16.0 : 15.0;
+              final target = (_userLat != null && !_permsDenied)
+                ? LatLng(_userLat!, _userLng!)
+                : _facaCenter;
+              final zoom = (_userLat != null && !_permsDenied) ? 16.0 : 15.0;
               _mapController.animateCamera(
                 CameraUpdate.newLatLngZoom(target, zoom),
               );
@@ -345,26 +324,32 @@ class _MainScreenState extends State<MainScreen> {
             title: const Text('Mis Denuncias'),
             onTap: () => Navigator.pushNamed(context, '/misDenuncias'),
           ),
-        if (_role == 'moderador')
-          
         if (_role == 'administrador') ...[
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Gestión de Usuarios'),
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const GestUsuariosScreen())),
+              context,
+              MaterialPageRoute(builder: (_) => const GestUsuariosScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Gestión de Roles'),
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const GestionRolesScreen())),
+              context,
+              MaterialPageRoute(builder: (_) => const GestionRolesScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.flag),
             title: const Text('Gestión de Clasificación'),
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => const GestionClasificacionDenunciasScreen())),
+              context,
+              MaterialPageRoute(
+                builder: (_) => const GestionClasificacionDenunciasScreen(),
+              ),
+            ),
           ),
         ],
         const Divider(),
@@ -376,7 +361,7 @@ class _MainScreenState extends State<MainScreen> {
       ]),
     );
   }
-  
+
   List<Widget> _buildOptionButtons() {
     final buttons = <Widget>[
       const Text('Opciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -384,7 +369,6 @@ class _MainScreenState extends State<MainScreen> {
     ];
     if (_role == 'usuario') {
       buttons.add(_button(Icons.report, 'Reportar un Problema', RealizarDenunciaScreen()));
-      
     } else if (_role == 'moderador') {
       buttons.add(_button(Icons.check_circle, 'Revisar Denuncias', const ListaDenunciasScreen()));
     } else if (_role == 'administrador') {
@@ -399,24 +383,16 @@ class _MainScreenState extends State<MainScreen> {
     return buttons;
   }
 
-  Widget _button(IconData icon, String label, Widget? screen, {String? routeName}) {
-    return ElevatedButton.icon(
-      onPressed: () {
-        if (screen != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-        } else if (routeName != null) {
-          Navigator.pushNamed(context, routeName);
-        }
-      },
-      icon: Icon(icon, color: Colors.white),
-      label: Text(label, style: const TextStyle(color: Colors.white)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF2E7D32),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        minimumSize: const Size(double.infinity, 56),
-      ),
-    );
-  }
+  Widget _button(IconData i, String label, Widget screen) => ElevatedButton.icon(
+    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => screen)),
+    icon: Icon(i, color: Colors.white),
+    label: Text(label, style: const TextStyle(color: Colors.white)),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFF2E7D32),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      minimumSize: const Size(double.infinity, 56),
+    ),
+  );
 
   void _showClusterInfo(model.Cluster c) {
     showModalBottomSheet(
@@ -428,8 +404,7 @@ class _MainScreenState extends State<MainScreen> {
       builder: (_) => Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Zona de Peligro', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),

@@ -79,9 +79,9 @@ class _IniciarScreenState extends State<IniciarScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('¡Bienvenido, ${user['nombre']}!'),
-          backgroundColor: Colors.green,
+        const SnackBar(
+          content: Text('¡Bienvenido!'),
+          backgroundColor: Color(0xFF2E7D32),
         ),
       );
 
@@ -224,12 +224,10 @@ class _IniciarScreenState extends State<IniciarScreen> {
                               if (_isLoading) return;
                               _login();
                             },
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
+                            backgroundColor: const Color(0xFF2E7D32),
                             textColor: Colors.white,
                             borderRadius: BorderRadius.circular(8),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             elevation: 4,
                           ),
                           if (_isLoading)
@@ -257,7 +255,10 @@ class ArcClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final path = Path();
     path.lineTo(0, size.height - 30);
-    path.quadraticBezierTo(size.width / 2, size.height + 20, size.width, size.height - 30);
+    path.quadraticBezierTo(
+      size.width / 2, size.height + 20,
+      size.width, size.height - 30,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;

@@ -136,7 +136,10 @@ class _DetalleDenunciaScreenState extends State<DetalleDenunciaScreen> {
     final d = widget.denuncia;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detalle de Denuncia'),
+        title: const Text(
+          'Detalle de Denuncia',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF2E7D32),
       ),
       body: SingleChildScrollView(

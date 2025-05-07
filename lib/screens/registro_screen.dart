@@ -252,7 +252,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           CustomButton(
                             text: 'Crear Cuenta',
                             onPressed: _register,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            backgroundColor: const Color(0xFF2E7D32),
                             textColor: Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             padding: const EdgeInsets.symmetric(vertical: 16),

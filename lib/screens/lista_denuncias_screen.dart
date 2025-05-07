@@ -159,7 +159,10 @@ class _ListaDenunciasScreenState extends State<ListaDenunciasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lista de Denuncias'),
+        title: const Text(
+          'Lista de Denuncias',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF2E7D32),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
