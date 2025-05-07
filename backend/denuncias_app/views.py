@@ -571,7 +571,7 @@ class DenunciasView(AuthRequiredView):
                     'cedula': d.usuario.cedula,
                     'telefono': d.usuario.telefono,
                     'email': d.usuario.email,
-                },
+                } if d.usuario else None,
 
                 'ubicacion_latitud': d.ubicacion_latitud,
                 'ubicacion_longitud': d.ubicacion_longitud,
@@ -678,7 +678,10 @@ class DenunciaDetailView(AuthRequiredView):
                     if field == 'fecha':
                         d.fecha = datetime.fromisoformat(val).date()
                     elif field == 'hora' and val:
-                        d.hora = datetime.fromisoformat(val).time()
+                        try:
+                            d.hora = datetime.strptime(val, '%H:%M').time()
+                        except ValueError:
+                            d.hora = datetime.strptime(val, '%H:%M:%S').time()
                     else:
                         attr = field.replace('_id', '')
                         setattr(
@@ -717,7 +720,7 @@ def compute_danger_slots(hist_dict: dict[int,int], k=1.0, smooth_m=1):
 
     # 3) Umbral dinámico
     mu    = sum(counts) / 24
-    sigma = (sum((c - mu)**2 for c in counts) / 24)**0.5
+    sigma = (sum((c - mu)*2 for c in counts) / 24)*0.5
     thresh = mu + k*sigma
 
     # 4) Detectar franjas

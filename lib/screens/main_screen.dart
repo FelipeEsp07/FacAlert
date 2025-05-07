@@ -256,8 +256,18 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Nota: Las denuncias realizadas aquí no reemplazan las denuncias formales ante la Fiscalía '
+                  'ni reflejan el comportamiento de los habitantes de las zonas reportadas.',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ],
           ),
+
         );
       },
     );
@@ -336,11 +346,7 @@ class _MainScreenState extends State<MainScreen> {
             onTap: () => Navigator.pushNamed(context, '/misDenuncias'),
           ),
         if (_role == 'moderador')
-          ListTile(
-            leading: const Icon(Icons.check_circle),
-            title: const Text('Aprobar Denuncias'),
-            onTap: () => Navigator.pushNamed(context, '/aprobarDenuncias'),
-          ),
+          
         if (_role == 'administrador') ...[
           ListTile(
             leading: const Icon(Icons.settings),
@@ -370,7 +376,7 @@ class _MainScreenState extends State<MainScreen> {
       ]),
     );
   }
-
+  
   List<Widget> _buildOptionButtons() {
     final buttons = <Widget>[
       const Text('Opciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -378,6 +384,7 @@ class _MainScreenState extends State<MainScreen> {
     ];
     if (_role == 'usuario') {
       buttons.add(_button(Icons.report, 'Reportar un Problema', RealizarDenunciaScreen()));
+      
     } else if (_role == 'moderador') {
       buttons.add(_button(Icons.check_circle, 'Revisar Denuncias', const ListaDenunciasScreen()));
     } else if (_role == 'administrador') {
